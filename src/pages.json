@@ -1,0 +1,26 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": { "navigationBarTitleText": "宝宝头型评估", "navigationBarBackgroundColor": "#ffffff", "navigationBarTextStyle": "black" }
+    },
+    {
+      "path": "pages/capture/capture",
+      "style": { "navigationBarTitleText": "拍摄", "navigationBarBackgroundColor": "#ffffff", "navigationBarTextStyle": "black" }
+    },
+    {
+      "path": "pages/result/result",
+      "style": { "navigationBarTitleText": "评估结果", "navigationBarBackgroundColor": "#ffffff", "navigationBarTextStyle": "black" }
+    },
+    {
+      "path": "pages/guide/guide",
+      "style": { "navigationBarTitleText": "拍摄指南", "navigationBarBackgroundColor": "#ffffff", "navigationBarTextStyle": "black" }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "宝宝头型评估",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f6f8"
+  }
+}

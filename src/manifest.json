@@ -1,0 +1,42 @@
+{
+    "name" : "宝宝头型评估",
+    "appid" : "__UNI__8EF07D4",
+    "description" : "宝宝头型评估工具（自用）",
+    "versionName" : "1.0.0",
+    "versionCode" : "100",
+    "transformPx" : false,
+    "app-plus" : {
+        "usingComponents" : true,
+        "nvueStyleCompiler" : "uni-app",
+        "compilerVersion" : 3,
+        "modules" : {},
+        "distribute" : {
+            "android" : {
+                "permissions" : [ "<uses-permission android:name=\"android.permission.CAMERA\"/>" ]
+            },
+            "ios" : {
+                "dSYMs" : false
+            },
+            "sdkConfigs" : {}
+        }
+    },
+    "h5" : {
+        "router" : {
+            "mode" : "hash"
+        },
+        "optimization" : {
+            "treeShaking" : {
+                "enable" : true
+            }
+        }
+    },
+    "quickapp" : {},
+    "mp-weixin" : {
+        "appid" : "",
+        "setting" : {
+            "urlCheck" : false
+        },
+        "usingComponents" : true
+    },
+    "vueVersion" : "3"
+}
