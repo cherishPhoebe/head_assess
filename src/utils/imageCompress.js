@@ -1,20 +1,59 @@
 // 图片压缩并读取为 base64（返回**不带** data: 前缀的纯 base64）
 //
-// 平台差异：
-// - App / 小程序：uni.compressImage + uni.getFileSystemManager().readFile
-// - H5（浏览器）：以上两个 API 均不存在，必须用 canvas 重绘压缩（blob: URL -> base64）
+// 平台分流（用能力检测，不依赖条件编译）：
+// - App（5+ 引擎）：plus.io 读取最稳，兼容 file://、_doc、相册临时路径等；可选 uni.compressImage 压缩
+// - 小程序：uni.compressImage + uni.getFileSystemManager().readFile
+// - H5（浏览器）：canvas 重绘压缩
 //
-// 用「能力检测」自动分流，避免依赖条件编译或平台常量。
+// 之前的问题：App 上用 getFileSystemManager().readFile 读 chooseImage 返回的路径经常读不到，
+// 失败后回退到 H5 的 canvas（App 内没有 document）必然报错「当前环境不支持图片处理」。
 
 const MAX_SIDE = 1024 // 压缩后最长边，兼顾识别精度与请求体积
 
-// 是否可用原生压缩/读文件 API
-function canUseNative() {
-  return (
-    typeof uni !== 'undefined' &&
-    typeof uni.compressImage === 'function' &&
-    typeof uni.getFileSystemManager === 'function'
-  )
+// 是否 App（5+ 引擎）
+function isApp() {
+  return typeof plus !== 'undefined' && plus.io
+}
+
+// ---- App：plus.io 读取文件为 base64（最稳）----
+function readFilePlus(filePath) {
+  return new Promise((resolve, reject) => {
+    plus.io.resolveLocalFileSystemURL(
+      filePath,
+      (entry) => {
+        entry.file(
+          (file) => {
+            const reader = new plus.io.FileReader()
+            reader.onloadend = (e) => {
+              const result = (e && e.target && e.target.result) || ''
+              const idx = result.indexOf(',')
+              resolve(idx >= 0 ? result.slice(idx + 1) : result)
+            }
+            reader.onerror = () => reject(new Error('读取文件失败'))
+            reader.readAsDataURL(file)
+          },
+          (err) => reject(err)
+        )
+      },
+      (err) => reject(err)
+    )
+  })
+}
+
+// App：先尝试压缩，失败则用原图；返回可读路径
+function prepareAppPath(filePath, quality = 70) {
+  return new Promise((resolve) => {
+    if (typeof uni !== 'undefined' && typeof uni.compressImage === 'function') {
+      uni.compressImage({
+        src: filePath,
+        quality,
+        success: (cres) => resolve((cres && cres.tempFilePath) || filePath),
+        fail: () => resolve(filePath)
+      })
+    } else {
+      resolve(filePath)
+    }
+  })
 }
 
 // ---- H5：canvas 压缩 ----
@@ -54,16 +93,15 @@ function compressH5(filePath, quality = 70) {
   })
 }
 
-// ---- App / 小程序：原生 API ----
-function compressNative(filePath, quality = 70) {
+// ---- 小程序：原生 API ----
+function compressMini(filePath, quality = 70) {
   return new Promise((resolve, reject) => {
     uni.compressImage({
       src: filePath,
       quality,
       success: (cres) => {
-        const temp = cres.tempFilePath
         uni.getFileSystemManager().readFile({
-          filePath: temp,
+          filePath: cres.tempFilePath,
           encoding: 'base64',
           success: (rres) => resolve(rres.data),
           fail: reject
@@ -76,14 +114,46 @@ function compressNative(filePath, quality = 70) {
 
 // 压缩单张图片并转为 base64 字符串
 export async function compressAndRead(filePath, quality = 70) {
-  // 优先原生方案（效果更好）；若原生失败（如某些环境下不支持），回退 H5 canvas
-  if (canUseNative()) {
+  // 1) App：plus.io 读取（最可靠），压缩仅作体积优化，失败不影响读取
+  if (isApp()) {
     try {
-      return await compressNative(filePath, quality)
+      const path = await prepareAppPath(filePath, quality)
+      return await readFilePlus(path)
     } catch (e) {
-      // 回退到 canvas 方案
+      // 仍失败再尝试原生 API 兜底一次
+      try {
+        const data = await new Promise((resolve, reject) => {
+          uni.compressImage({
+            src: filePath,
+            quality,
+            success: (cres) => {
+              uni.getFileSystemManager().readFile({
+                filePath: cres.tempFilePath,
+                encoding: 'base64',
+                success: (r) => resolve(r.data),
+                fail: reject
+              })
+            },
+            fail: reject
+          })
+        })
+        return data
+      } catch (e2) {
+        throw new Error('图片读取失败，请重试或更换照片')
+      }
     }
   }
+
+  // 2) 小程序：原生 API
+  if (typeof uni !== 'undefined' && typeof uni.getFileSystemManager === 'function') {
+    try {
+      return await compressMini(filePath, quality)
+    } catch (e) {
+      // 落到 H5 兜底
+    }
+  }
+
+  // 3) H5：canvas
   return compressH5(filePath, quality)
 }
 

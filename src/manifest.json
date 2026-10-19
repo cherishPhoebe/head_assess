@@ -9,13 +9,31 @@
         "usingComponents" : true,
         "nvueStyleCompiler" : "uni-app",
         "compilerVersion" : 3,
-        "modules" : {},
+        "modules" : {
+            "Camera" : {},
+            "Gallery" : {}
+        },
         "distribute" : {
             "android" : {
-                "permissions" : [ "<uses-permission android:name=\"android.permission.CAMERA\"/>" ]
+                "permissions" : [
+                    "<uses-permission android:name=\"android.permission.CAMERA\"/>",
+                    "<uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>",
+                    "<uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"/>",
+                    "<uses-permission android:name=\"android.permission.READ_MEDIA_IMAGES\"/>",
+                    "<uses-feature android:name=\"android.hardware.camera\"/>",
+                    "<uses-feature android:name=\"android.hardware.camera.autofocus\"/>"
+                ],
+                "permissionExternalStorage" : {
+                    "request" : "once"
+                }
             },
             "ios" : {
-                "dSYMs" : false
+                "dSYMs" : false,
+                "privacyDescription" : {
+                    "NSCameraUsageDescription" : "用于拍摄宝宝头部照片以评估头型",
+                    "NSPhotoLibraryUsageDescription" : "用于从相册选择宝宝头部照片",
+                    "NSPhotoLibraryAddUsageDescription" : "用于保存评估结果图片"
+                }
             },
             "sdkConfigs" : {}
         }

@@ -64,6 +64,14 @@
     </view>
 
     <Disclaimer />
+
+    <view v-if="loading || qcLoading" class="loading-mask">
+      <view class="loading-card">
+        <view class="spinner"></view>
+        <text class="loading-title">{{ loading ? loadingText : qcText }}</text>
+        <text class="loading-sub">请稍候，正在处理，切勿关闭页面</text>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -96,6 +104,8 @@ export default {
       groups: [makeEmpty(), null],
       loading: false,
       qcLoading: false,
+      loadingText: '',
+      qcText: '',
       quality: { byIndex: {}, failed: [], allOk: true }
     }
   },
@@ -204,6 +214,7 @@ export default {
       const apiKey = uni.getStorageSync(STORAGE_KEY_APIKEY)
       if (!apiKey) return
       this.qcLoading = true
+      this.qcText = '正在检查照片质量…'
       try {
         await this.runQuality(this.views.map((v) => ({ base64: g[v] })), apiKey)
         if (this.quality.allOk) {
@@ -221,6 +232,7 @@ export default {
         uni.showToast({ title: '质量检查失败，可忽略', icon: 'none' })
       } finally {
         this.qcLoading = false
+        this.qcText = ''
       }
     },
     async analyze() {
@@ -234,6 +246,7 @@ export default {
         return
       }
       this.loading = true
+      this.loadingText = '正在校验照片质量…'
       try {
         // 1. 自动质量校验（第 1 组，轻量备模型）
         await this.runQuality(this.views.map((v) => ({ base64: this.groups[0][v] })), apiKey)
@@ -262,7 +275,11 @@ export default {
           (g) => g && this.views.every((v) => g[v])
         )
         const results = []
-        for (const g of completeGroups) {
+        for (let gi = 0; gi < completeGroups.length; gi++) {
+          const g = completeGroups[gi]
+          this.loadingText = completeGroups.length > 1
+            ? `正在分析第 ${gi + 1}/${completeGroups.length} 组头型…`
+            : '正在分析头型…'
           const images = this.views.map((v) => ({ base64: g[v] }))
           const r = await assessHead(images, apiKey, store.ageMonths)
           if (r.views && r.views.top) {
@@ -277,12 +294,14 @@ export default {
         }
 
         // 4. 多组取平均
+        this.loadingText = '正在汇总分析结果…'
         const final =
           results.length > 1
             ? aggregateResults(results, store.ageMonths)
             : { ...results[0], _groups: 1, _averaged: false }
 
         store.result = final
+        this.loadingText = '即将展示结果…'
         uni.navigateTo({ url: '/pages/result/result' })
       } catch (e) {
         uni.showToast({ title: (e && e.message) || '分析失败', icon: 'none' })
@@ -389,5 +408,51 @@ export default {
 }
 .analyze {
   margin-top: 8rpx;
+}
+.loading-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+.loading-card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 56rpx 60rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 380rpx;
+}
+.spinner {
+  width: 64rpx;
+  height: 64rpx;
+  border: 6rpx solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.loading-title {
+  font-size: 30rpx;
+  color: #111827;
+  font-weight: 600;
+  margin-top: 28rpx;
+  text-align: center;
+}
+.loading-sub {
+  font-size: 24rpx;
+  color: #6b7280;
+  margin-top: 12rpx;
 }
 </style>
