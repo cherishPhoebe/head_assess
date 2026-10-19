@@ -24,3 +24,6 @@ codex_change_log
 
 # local files
 yarn.lock
+
+# project internal data (memory / agent notes, do not commit)
+.workbuddy/
